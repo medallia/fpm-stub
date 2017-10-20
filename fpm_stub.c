@@ -540,6 +540,39 @@ print_netlink_msg_ctx (netlink_msg_ctx_t *ctx)
 }
 
 /*
+ * inject_netlink_msg_ctx
+ */
+void
+inject_netlink_msg_ctx (netlink_msg_ctx_t *ctx)
+{
+  int sock = socket(AF_NETLINK, SOCK_RAW, NETLINK_ROUTE);
+
+  struct sockaddr_nl snl;
+  memset(&snl, 0, sizeof snl);
+  snl.nl_family = AF_NETLINK;
+  bind(sock, (struct sockaddr *)&snl, sizeof snl);
+
+  struct iovec iov;
+  struct msghdr msg;
+
+  memset(&iov, 0, sizeof iov);
+  memset(&msg, 0, sizeof msg);
+
+  struct nlmsghdr *n = ctx->hdr;
+
+  iov.iov_base = n;
+  iov.iov_len = n->nlmsg_len;
+
+  msg.msg_name = (void *)&snl;
+  msg.msg_namelen = sizeof snl;
+  msg.msg_iov = &iov;
+  msg.msg_iovlen = 1;
+
+  sendmsg(sock, &msg, 0);
+  close(sock);
+}
+
+/*
  * parse_netlink_msg
  */
 void
@@ -570,6 +603,7 @@ parse_netlink_msg (char *buf, size_t buf_len)
       }
 
       print_netlink_msg_ctx(ctx);
+      inject_netlink_msg_ctx(ctx);
       break;
 
     default:
